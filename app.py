@@ -27,8 +27,13 @@ def parse_and_extract_structure(pdb_content):
     structure = parser.get_structure('protein', pdb_file_like)
     return structure
 
+
+
 def get_alpha_carbon_coords(structure, target_chains=None):
-    """Extracts the alpha-carbon coordinates for each residue from a pre-parsed structure."""
+    """
+    Extracts the alpha-carbon coordinates for each residue from a pre-parsed structure.
+    Cleaned to fetch only the integer number from the Biopython sequence tuple.
+    """
     coords = []
     for model in structure:
         all_chains_in_pdb = sorted(list(set(chain.id for chain in model)))
@@ -39,8 +44,12 @@ def get_alpha_carbon_coords(structure, target_chains=None):
                 for residue in chain:
                     if residue.has_id('CA') and residue.get_resname() not in ['HOH', 'WAT', 'UNL']:
                         ca_atom = residue['CA']
+                        
+                        # --- FIX: Extract only the integer ID from the Biopython residue tuple ---
+                        res_num = residue.id[1] 
+                        
                         coords.append({
-                            'residue_id': (chain.id, residue.id, residue.id),
+                            'residue_id': res_num, # Clean integer number
                             'residue_name': residue.get_resname(),
                             'chain_id': chain.id,
                             'coordinates': ca_atom.get_coord()
@@ -48,10 +57,11 @@ def get_alpha_carbon_coords(structure, target_chains=None):
     return coords
 
 def build_contact_network(ca_coords, cutoff=7.5):
-    """Builds a protein contact network from alpha-carbon coordinates."""
+    """Builds a protein contact network with clean, readable string names for Node_ID."""
     G = nx.Graph()
 
     for i, res_data in enumerate(ca_coords):
+        # --- FIX: Node ID will now look clean (e.g., "A_MET_14") ---
         node_id = f"{res_data['chain_id']}_{res_data['residue_name']}_{res_data['residue_id']}"
         G.add_node(node_id, **res_data)
 
@@ -69,6 +79,7 @@ def build_contact_network(ca_coords, cutoff=7.5):
             if distance <= cutoff:
                 G.add_edge(node_i_id, node_j_id, distance=distance)
     return G
+
 
 # --- Excel Exporter Utility Function ---
 def to_excel(df):
