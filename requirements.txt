@@ -1,0 +1,8 @@
+pandas
+numpy
+biopython
+networkx
+matplotlib
+leidenalg
+python-igraph
+streamlit
