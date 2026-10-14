@@ -1,9 +1,9 @@
 pandas
-numpy==1.21.6
-biopython==1.81
-networkx==2.6.3
+numpy
+biopython
+networkx
 matplotlib==3.5.3
-leidenalg==0.10.2
+leidenalg
 python-igraph
 streamlit
 xlsxwriter
