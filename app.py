@@ -212,7 +212,7 @@ if uploaded_file is not None:
             unique_communities_for_plot = sorted(list(set(communities_for_plot)))
             #colors = plt.cm.get_cmap('tab20', len(unique_communities_for_plot))
             colors = plt.cm.get_cmap('tab20')(range(len(unique_communities_for_plot)))
-            node_colors = [colors(unique_communities_for_plot.index(c)) for c in communities_for_plot]
+            node_colors = [colors[unique_communities_for_plot.index(c)] for c in communities_for_plot]
 
             pos = nx.spring_layout(contact_network, seed=42) # Consistent layout
             nx.draw_networkx_nodes(contact_network, pos, node_color=node_colors, node_size=300, alpha=0.9, ax=ax)
