@@ -12,6 +12,7 @@ import leidenalg as la
 import igraph as ig
 import streamlit as st
 from io import StringIO, BytesIO # Added BytesIO for Excel export
+import sys
 sys.setrecursionlimit(10000)
 
 def get_alpha_carbon_coords(pdb_file, target_chains=None):
