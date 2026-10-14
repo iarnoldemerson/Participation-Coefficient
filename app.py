@@ -15,8 +15,6 @@ import sys
 sys.setrecursionlimit(10000)
 
 # --- Streamlit Structural Caching Bypass ---
-# This stops Streamlit from recursively hashing biological/graph files,
-# completely resolving the internal "RecursionError: maximum recursion depth exceeded".
 @st.cache_resource(hash_funcs={
     nx.Graph: lambda _: None,
     ig.Graph: lambda _: None,
@@ -30,9 +28,7 @@ def parse_and_extract_structure(pdb_content):
     return structure
 
 def get_alpha_carbon_coords(structure, target_chains=None):
-    """
-    Extracts the alpha-carbon coordinates for each residue from a pre-parsed structure.
-    """
+    """Extracts the alpha-carbon coordinates for each residue from a pre-parsed structure."""
     coords = []
     for model in structure:
         all_chains_in_pdb = sorted(list(set(chain.id for chain in model)))
@@ -44,7 +40,7 @@ def get_alpha_carbon_coords(structure, target_chains=None):
                     if residue.has_id('CA') and residue.get_resname() not in ['HOH', 'WAT', 'UNL']:
                         ca_atom = residue['CA']
                         coords.append({
-                            'residue_id': (chain.id, residue.id[1], residue.id[2]),
+                            'residue_id': (chain.id, residue.id, residue.id),
                             'residue_name': residue.get_resname(),
                             'chain_id': chain.id,
                             'coordinates': ca_atom.get_coord()
@@ -56,17 +52,17 @@ def build_contact_network(ca_coords, cutoff=7.5):
     G = nx.Graph()
 
     for i, res_data in enumerate(ca_coords):
-        node_id = f"{res_data['chain_id']}_{res_data['residue_name']}_{res_data['residue_id'][1]}"
+        node_id = f"{res_data['chain_id']}_{res_data['residue_name']}_{res_data['residue_id']}"
         G.add_node(node_id, **res_data)
 
     for i in range(len(ca_coords)):
         node_i_data = ca_coords[i]
-        node_i_id = f"{node_i_data['chain_id']}_{node_i_data['residue_name']}_{node_i_data['residue_id'][1]}"
+        node_i_id = f"{node_i_data['chain_id']}_{node_i_data['residue_name']}_{node_i_data['residue_id']}"
         coord_i = node_i_data['coordinates']
 
         for j in range(i + 1, len(ca_coords)):
             node_j_data = ca_coords[j]
-            node_j_id = f"{node_j_data['chain_id']}_{node_j_data['residue_name']}_{node_j_data['residue_id'][1]}"
+            node_j_id = f"{node_j_data['chain_id']}_{node_j_data['residue_name']}_{node_j_data['residue_id']}"
             coord_j = node_j_data['coordinates']
 
             distance = np.linalg.norm(coord_i - coord_j)
@@ -74,12 +70,12 @@ def build_contact_network(ca_coords, cutoff=7.5):
                 G.add_edge(node_i_id, node_j_id, distance=distance)
     return G
 
+# --- Excel Exporter Utility Function ---
 def to_excel(df):
     """Converts a DataFrame to an Excel file binary format."""
     output = BytesIO()
-    # Note: ensure 'xlsxwriter' is added to requirements.txt
     with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
-        df.to_excel(writer, index=False, sheet_name='Sheet1')
+        df.to_excel(writer, index=False, sheet_name='Network Analysis')
     return output.getvalue()
 
 # --- Streamlit Application Layout ---
@@ -94,7 +90,6 @@ with st.sidebar:
 if uploaded_file is not None:
     pdb_content = uploaded_file.read().decode("utf-8")
     
-    # Parse structure safely bypassing recursive loops
     structure = parse_and_extract_structure(pdb_content)
     all_chains = sorted(list(set(chain.id for model in structure for chain in model)))
 
@@ -156,24 +151,37 @@ if uploaded_file is not None:
 
             nx.set_node_attributes(contact_network, participation_coefficients, 'participation_coefficient')
 
-            # --- Resolved Broken Logic Chunk & Integrated Modern Colormaps ---
             output_data = []
             for node_id, attributes in contact_network.nodes(data=True):
                 output_data.append({
                     'Node_ID': node_id,
                     'Chain_ID': attributes['chain_id'],
                     'Residue_Name': attributes['residue_name'],
-                    'Residue_Number': attributes['residue_id'][1],
+                    'Residue_Number': attributes['residue_id'],
                     'Community': attributes['community'],
                     'Participation_Coefficient': attributes['participation_coefficient']
                 })
             
             df_results = pd.DataFrame(output_data)
-            st.dataframe(df_results)
+            
+            # --- Added Download Button and Table Display ---
+            col1, col2 = st.columns([8, 2])
+            with col1:
+                st.markdown("### Processed Results")
+            with col2:
+                # Convert the dataframe into an Excel byte-stream
+                excel_data = to_excel(df_results)
+                st.download_button(
+                    label="📥 Download Excel File",
+                    data=excel_data,
+                    file_name="protein_network_analysis.xlsx",
+                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                )
+            
+            # Display interactive dataframe below the header components
+            st.dataframe(df_results, use_container_width=True)
 
-            # Modernized Matplotlib call to prevent Attribute/Type Errors
             unique_communities_for_plot = df_results['Community'].unique()
             colors = plt.colormaps['tab20']
             
-            # Example visualization assignment using the stable registry function
             st.success("Analysis complete! Data processed successfully.")
