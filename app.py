@@ -27,8 +27,6 @@ def parse_and_extract_structure(pdb_content):
     structure = parser.get_structure('protein', pdb_file_like)
     return structure
 
-
-
 def get_alpha_carbon_coords(structure, target_chains=None):
     """
     Extracts the alpha-carbon coordinates for each residue from a pre-parsed structure.
@@ -44,12 +42,10 @@ def get_alpha_carbon_coords(structure, target_chains=None):
                 for residue in chain:
                     if residue.has_id('CA') and residue.get_resname() not in ['HOH', 'WAT', 'UNL']:
                         ca_atom = residue['CA']
-                        
-                        # --- FIX: Extract only the integer ID from the Biopython residue tuple ---
                         res_num = residue.id[1] 
                         
                         coords.append({
-                            'residue_id': res_num, # Clean integer number
+                            'residue_id': res_num,
                             'residue_name': residue.get_resname(),
                             'chain_id': chain.id,
                             'coordinates': ca_atom.get_coord()
@@ -61,7 +57,6 @@ def build_contact_network(ca_coords, cutoff=7.5):
     G = nx.Graph()
 
     for i, res_data in enumerate(ca_coords):
-        # --- FIX: Node ID will now look clean (e.g., "A_MET_14") ---
         node_id = f"{res_data['chain_id']}_{res_data['residue_name']}_{res_data['residue_id']}"
         G.add_node(node_id, **res_data)
 
@@ -80,8 +75,6 @@ def build_contact_network(ca_coords, cutoff=7.5):
                 G.add_edge(node_i_id, node_j_id, distance=distance)
     return G
 
-
-# --- Excel Exporter Utility Function ---
 def to_excel(df):
     """Converts a DataFrame to an Excel file binary format."""
     output = BytesIO()
@@ -127,7 +120,9 @@ if uploaded_file is not None:
 
         if contact_network.number_of_nodes() > 1 and contact_network.number_of_edges() > 0:
             ig_graph = ig.Graph.from_networkx(contact_network)
-            partition = la.find_partition(ig_graph, la.ModularityVertexPartition)
+            
+            # --- Fixed Seed Integration Here ---
+            partition = la.find_partition(ig_graph, la.ModularityVertexPartition, seed=42)
 
             modularity_score = partition.modularity
             st.write(f"Modularity score: {modularity_score:.4f}")
@@ -175,12 +170,10 @@ if uploaded_file is not None:
             
             df_results = pd.DataFrame(output_data)
             
-            # --- Added Download Button and Table Display ---
             col1, col2 = st.columns([8, 2])
             with col1:
                 st.markdown("### Processed Results")
             with col2:
-                # Convert the dataframe into an Excel byte-stream
                 excel_data = to_excel(df_results)
                 st.download_button(
                     label="📥 Download Excel File",
@@ -189,10 +182,5 @@ if uploaded_file is not None:
                     mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
                 )
             
-            # Display interactive dataframe below the header components
-            st.dataframe(df_results, use_container_width=True)
-
-            unique_communities_for_plot = df_results['Community'].unique()
-            colors = plt.colormaps['tab20']
-            
-            st.success("Analysis complete! Data processed successfully.")
+            # Formatted clean completion closure for the final table display matrix container
+            st.dataframe(df_results, width=None, use_container_width=True)
